@@ -90,7 +90,7 @@ with st.sidebar:
     st.session_state["add_pdf_files"] = add_pdf_files
 
 st.title("📄 MediTrack - Analyze your medical records")
-styled_caption = '<p style="font-size: 17px; color: #aaa;">🚀 A <a href="meditrack.in">solution</a> to all your problems!</p>'  # noqa: E501
+styled_caption = '<p style="font-size: 17px; color: #aaa;">💉💊 A <a href="meditrack.in">solution</a> to all your medical organization!</p>'  # noqa: E501
 st.markdown(styled_caption, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
@@ -98,8 +98,8 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": """
-                Hi! I'm chatbot powered by Embedchain, which can answer questions about your pdf documents.\n
-                Upload your pdf documents here and I'll answer your questions about them! 
+                Hi! I'm MediTrackGPT, and I am here to answer questions about your medical records.\n
+                Upload them here and ask me anything regarding the content of the pdf! 
             """,
         }
     ]
@@ -108,7 +108,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Ask me anything!"):
+if prompt := st.chat_input("Message MediTrackGPT... "):
     if not st.session_state.api_key:
         st.error("Please enter your OpenAI API Key", icon="🤖")
         st.stop()
