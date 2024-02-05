@@ -11,7 +11,6 @@ from embedchain.config import BaseLlmConfig
 from embedchain.helpers.callbacks import (StreamingStdOutCallbackHandlerYield,
                                           generate)
 
-
 def embedchain_bot(db_path, api_key):
     return App.from_config(
         config={
@@ -20,7 +19,7 @@ def embedchain_bot(db_path, api_key):
                 "config": {
                     "model": "gpt-3.5-turbo-1106",
                     "temperature": 0.5,
-                    "max_tokens": 1000,
+                    "max_tokens": 1000, 
                     "top_p": 1,
                     "stream": True,
                     "api_key": api_key,
@@ -54,9 +53,6 @@ def get_ec_app(api_key):
 
 
 with st.sidebar:
-    #openai_access_token = st.text_input("OpenAI API Key", key="api_key", type="password")
-    #"WE DO NOT STORE YOUR OPENAI KEY."
-    #"Just paste your OpenAI API key here and we'll use it to power the chatbot. [Get your OpenAI API key](https://platform.openai.com/api-keys)"  # noqa: E501
 
     st.session_state['api_key'] = "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"
     
@@ -89,8 +85,8 @@ with st.sidebar:
             st.stop()
     st.session_state["add_pdf_files"] = add_pdf_files
 
-st.title("📄 MediTrack - Analyze your medical records")
-styled_caption = '<p style="font-size: 17px; color: #aaa;">💉💊 A <a href="meditrack.in">solution</a> to all your medical organization!</p>'  # noqa: E501
+st.title("Analyze your medical records")
+styled_caption = '<p style="font-size: 17px; color: grey;"> A solution to all your medical organization!</p>'
 st.markdown(styled_caption, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
