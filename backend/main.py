@@ -1,27 +1,3 @@
-# from fastapi import FastAPI
-
-# app = FastAPI()
-
-# food_items = {
-#     "indian": ["Samosa", "Paneer Tikka", "Butter Chicken"],
-#     "chinese": ["Spring Rolls", "Kung Pao Chicken", "Fried Rice"],
-#     "italian": ["Pasta", "Pizza", "Tiramisu"],
-#     "mexican": ["Tacos", "Burritos", "Guacamole"],
-# }
-
-# valid_cuisines = ["indian", "chinese", "italian", "mexican"]
-
-# @app.get("/get_items/{cuisine}")
-# async def get_items(cuisine):
-#     if cuisine not in valid_cuisines:
-#         return f"Supported cuisines are: {valid_cuisines})"
-
-#     return food_items.get(cuisine)
-
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(app)
-
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
