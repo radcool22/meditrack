@@ -22,18 +22,16 @@
 #     import uvicorn
 #     uvicorn.run(app)
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import openai
 import os
+import pdfplumber
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Set your OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 # In-memory storage for uploaded reports
 uploaded_reports = {}
@@ -42,12 +40,25 @@ class QuestionRequest(BaseModel):
     report_id: str
     question: str
 
+def extract_text_from_file(file: UploadFile) -> str:
+    if file.filename.endswith(".pdf"):
+        with pdfplumber.open(file.file) as pdf:
+            text = "".join(page.extract_text() or "" for page in pdf.pages)
+        return text
+    elif file.filename.endswith(".txt"):
+        return file.file.read().decode("utf-8")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file format. Only .pdf and .txt allowed.")
+
 @app.post("/upload/")
 async def upload_report(file: UploadFile = File(...)):
-    content = await file.read()
-    report_id = file.filename
-    uploaded_reports[report_id] = content.decode("utf-8")
-    return {"message": "Report uploaded successfully", "report_id": report_id}
+    try:
+        content = extract_text_from_file(file)
+        report_id = file.filename
+        uploaded_reports[report_id] = content
+        return {"message": "Report uploaded successfully", "report_id": report_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ask/")
 async def ask_question(request: QuestionRequest):
@@ -55,23 +66,19 @@ async def ask_question(request: QuestionRequest):
     question = request.question
 
     if report_id not in uploaded_reports:
-        return JSONResponse(status_code=404, content={"message": "Report not found"})
+        raise HTTPException(status_code=404, detail="Report not found.")
 
     report_content = uploaded_reports[report_id]
-    prompt = f"The following is a medical report:\n\n{report_content}\n\nAnswer the following question based on the report:\n{question}"
+    prompt = f"The following is a medical report:\n\n{report_content}\n\nAnswer this question:\n{question}"
 
     try:
         response = openai.Completion.create(
-            engine="text-davinci-003",
+            model="text-davinci-003",
             prompt=prompt,
             max_tokens=200,
-            temperature=0.7
+            temperature=0.5,
         )
         answer = response.choices[0].text.strip()
         return {"answer": answer}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": "Error processing the request", "error": str(e)})
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app)
+        raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
