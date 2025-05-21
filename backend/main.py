@@ -22,43 +22,45 @@
 #     import uvicorn
 #     uvicorn.run(app)
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 import os
 import pdfplumber
+from io import BytesIO
 
 app = FastAPI()
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# In-memory storage for uploaded reports
 uploaded_reports = {}
 
 class QuestionRequest(BaseModel):
     report_id: str
     question: str
 
-def extract_text_from_file(file: UploadFile) -> str:
-    if file.filename.endswith(".pdf"):
-        with pdfplumber.open(file.file) as pdf:
-            text = "".join(page.extract_text() or "" for page in pdf.pages)
-        return text
-    elif file.filename.endswith(".txt"):
-        return file.file.read().decode("utf-8")
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported file format. Only .pdf and .txt allowed.")
-
 @app.post("/upload/")
 async def upload_report(file: UploadFile = File(...)):
+    report_id = file.filename
+    content = await file.read()
+
     try:
-        content = extract_text_from_file(file)
-        report_id = file.filename
-        uploaded_reports[report_id] = content
+        # Open the PDF using pdfplumber
+        with pdfplumber.open(BytesIO(content)) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+
+        if not text.strip():
+            return JSONResponse(status_code=400, content={"message": "Could not extract any text from the PDF."})
+
+        uploaded_reports[report_id] = text
         return {"message": "Report uploaded successfully", "report_id": report_id}
+    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"message": "Failed to read PDF", "error": str(e)})
+
 
 @app.post("/ask/")
 async def ask_question(request: QuestionRequest):
@@ -66,19 +68,22 @@ async def ask_question(request: QuestionRequest):
     question = request.question
 
     if report_id not in uploaded_reports:
-        raise HTTPException(status_code=404, detail="Report not found.")
+        return JSONResponse(status_code=404, content={"message": "Report not found"})
 
     report_content = uploaded_reports[report_id]
-    prompt = f"The following is a medical report:\n\n{report_content}\n\nAnswer this question:\n{question}"
 
     try:
-        response = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=prompt,
-            max_tokens=200,
-            temperature=0.5,
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a helpful medical assistant."},
+                {"role": "user", "content": f"The following is a medical report:\n\n{report_content}"},
+                {"role": "user", "content": question}
+            ],
+            temperature=0.7,
+            max_tokens=200
         )
-        answer = response.choices[0].text.strip()
+        answer = response.choices[0].message.content.strip()
         return {"answer": answer}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
+        return JSONResponse(status_code=500, content={"message": "Error processing the request", "error": str(e)})
