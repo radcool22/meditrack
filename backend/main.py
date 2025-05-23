@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 import os
@@ -8,7 +9,7 @@ from io import BytesIO
 
 app = FastAPI()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(os.getenv("OPENAI_API_KEY"))
 
 # Store uploaded reports in memory
 uploaded_reports = {}
@@ -45,12 +46,15 @@ async def ask_question(request: QuestionRequest):
     if request.report_id not in uploaded_reports:
         return JSONResponse(status_code=404, content={"message": "Report not found"})
 
+    full_text = uploaded_reports[request.report_id]
+    shortened_text = full_text[:4000]  # Avoid hitting token limit
+
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful medical assistant."},
-                {"role": "user", "content": f"The following is a medical report:\n\n{uploaded_reports[request.report_id]}"},
+                {"role": "user", "content": f"The following is a medical report:\n\n{shortened_text}"},
                 {"role": "user", "content": request.question}
             ],
             temperature=0.7,
@@ -58,6 +62,15 @@ async def ask_question(request: QuestionRequest):
         )
         answer = response.choices[0].message.content.strip()
         return {"answer": answer}
-    
+
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": "OpenAI API error", "error": str(e)})
+        print("OpenAI API Error:", str(e))  # Log error in terminal
+        return JSONResponse(
+            status_code=500,
+            content={"message": "OpenAI API error", "error": str(e)}
+        )    
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join("frontend", "index.html"))

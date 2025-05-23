@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MediTrack</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f4f4f4;
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        input, button, textarea {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+
+        #answer {
+            white-space: pre-wrap;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        #uploadStatus {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MediTrack</h1>
+
+    <!-- Upload Section -->
+    <div class="section">
+        <h2>Upload your medical report (in PDF format)</h2>
+        <input type="file" id="fileInput" />
+        <button onclick="upload()">Upload</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <!-- Ask Question Section -->
+    <div class="section">
+        <h2>Ask any Question</h2>
+        <input type="hidden" id="reportId" placeholder="Report ID (from upload response)" />
+        <textarea id="questionInput" placeholder="Type your question here..."></textarea>
+        <button onclick="askQuestion()">Ask</button>
+        <div id="answer"></div>
+    </div>
+
+    <script>
+        async function upload() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+            const uploadStatus = document.getElementById("uploadStatus");
+
+            if (!file) {
+                uploadStatus.textContent = "Please select a file.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch("/upload/", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    uploadStatus.textContent = `Upload failed: ${data.message || "Unknown error"}`;
+                } else {
+                    uploadStatus.textContent = `Uploaded successfully. Report ID: ${data.report_id}`;
+                    document.getElementById("reportId").value = data.report_id;
+                }
+            } catch (error) {
+                uploadStatus.textContent = "Upload failed: Network error.";
+                console.error(error);
+            }
+        }
+
+        async function askQuestion() {
+            const reportId = document.getElementById("reportId").value.trim();
+            const question = document.getElementById("questionInput").value.trim();
+            const answerDiv = document.getElementById("answer");
+
+            if (!reportId || !question) {
+                answerDiv.textContent = "Please enter both the Report ID and your question.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/ask/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ report_id: reportId, question })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    answerDiv.textContent = `Error: ${data.message || "Something went wrong."}`;
+                } else {
+                    answerDiv.textContent = data.answer;
+                }
+            } catch (error) {
+                answerDiv.textContent = "Error: Network error.";
+                console.error(error);
+            }
+        }
+    </script>
+
+</body>
+</html>
