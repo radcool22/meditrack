@@ -47,7 +47,7 @@ async def ask_question(request: QuestionRequest):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful medical assistant."},
                 {"role": "user", "content": f"The following is a medical report:\n\n{uploaded_reports[request.report_id]}"},
