@@ -1,147 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MediTrack</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 20px;
-            background: #f4f4f4;
-            border-radius: 10px;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        input, button, textarea {
-            width: 100%;
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-        }
-
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .section {
-            margin-top: 30px;
-        }
-
-        #answer {
-            white-space: pre-wrap;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-
-        #uploadStatus {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical Report Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    label, input, button, textarea {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.6rem;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #answer {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #eee;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
+  <h1>Medical Report Assistant</h1>
 
-    <h1>MediTrack</h1>
+  <form id="uploadForm">
+    <label for="pdfFile">Upload PDF Report:</label>
+    <input type="file" id="pdfFile" accept="application/pdf" required />
+    <button type="submit">Upload Report</button>
+  </form>
 
-    <!-- Upload Section -->
-    <div class="section">
-        <h2>Upload your medical report (in PDF format)</h2>
-        <input type="file" id="fileInput" />
-        <button onclick="upload()">Upload</button>
-        <p id="uploadStatus"></p>
-    </div>
+  <form id="askForm" style="display:none;">
+    <label for="question">Ask a Question:</label>
+    <textarea id="question" rows="4" placeholder="Type your question here..." required></textarea>
+    <button type="submit">Ask</button>
+  </form>
 
-    <!-- Ask Question Section -->
-    <div class="section">
-        <h2>Ask any Question</h2>
-        <input type="hidden" id="reportId" placeholder="Report ID (from upload response)" />
-        <textarea id="questionInput" placeholder="Type your question here..."></textarea>
-        <button onclick="askQuestion()">Ask</button>
-        <div id="answer"></div>
-    </div>
+  <div id="answer"></div>
 
-    <script>
-        async function upload() {
-            const fileInput = document.getElementById("fileInput");
-            const file = fileInput.files[0];
-            const uploadStatus = document.getElementById("uploadStatus");
+  <script>
+    let currentReportId = null;
 
-            if (!file) {
-                uploadStatus.textContent = "Please select a file.";
-                return;
-            }
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("pdfFile");
+      const file = fileInput.files[0];
 
-            const formData = new FormData();
-            formData.append("file", file);
+      if (!file) return alert("Please select a PDF file.");
 
-            try {
-                const response = await fetch("/upload/", {
-                    method: "POST",
-                    body: formData
-                });
+      const formData = new FormData();
+      formData.append("file", file);
 
-                const data = await response.json();
+      try {
+        const response = await fetch("http://localhost:8000/upload/", {
+          method: "POST",
+          body: formData,
+        });
 
-                if (!response.ok) {
-                    uploadStatus.textContent = `Upload failed: ${data.message || "Unknown error"}`;
-                } else {
-                    uploadStatus.textContent = `Uploaded successfully. Report ID: ${data.report_id}`;
-                    document.getElementById("reportId").value = data.report_id;
-                }
-            } catch (error) {
-                uploadStatus.textContent = "Upload failed: Network error.";
-                console.error(error);
-            }
-        }
+        const result = await response.json();
 
-        async function askQuestion() {
-            const reportId = document.getElementById("reportId").value.trim();
-            const question = document.getElementById("questionInput").value.trim();
-            const answerDiv = document.getElementById("answer");
+        if (!response.ok) throw new Error(result.message || "Upload failed");
 
-            if (!reportId || !question) {
-                answerDiv.textContent = "Please enter both the Report ID and your question.";
-                return;
-            }
+        currentReportId = result.report_id;
+        alert("Report uploaded successfully!");
+        document.getElementById("askForm").style.display = "block";
+      } catch (error) {
+        alert("Upload failed: " + error.message);
+      }
+    });
 
-            try {
-                const response = await fetch("/ask/", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ report_id: reportId, question })
-                });
+    document.getElementById("askForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const question = document.getElementById("question").value;
 
-                const data = await response.json();
+      if (!question || !currentReportId) return alert("Missing input or uploaded report.");
 
-                if (!response.ok) {
-                    answerDiv.textContent = `Error: ${data.message || "Something went wrong."}`;
-                } else {
-                    answerDiv.textContent = data.answer;
-                }
-            } catch (error) {
-                answerDiv.textContent = "Error: Network error.";
-                console.error(error);
-            }
-        }
-    </script>
+      try {
+        const response = await fetch("http://localhost:8000/ask/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            report_id: currentReportId,
+            question: question,
+          }),
+        });
 
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.message || "Request failed");
+
+        document.getElementById("answer").innerText = "Answer: " + result.answer;
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+  </script>
 </body>
 </html>

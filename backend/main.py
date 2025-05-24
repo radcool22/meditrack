@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 import os
@@ -9,12 +10,22 @@ from io import BytesIO
 
 app = FastAPI()
 
-client = OpenAI(os.getenv("OPENAI_API_KEY"))
+# Enable CORS so frontend JS can access the backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Use specific origin like ["http://localhost:8000"] for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# OpenAI client setup
+client = OpenAI(api_key="")
 
 # Store uploaded reports in memory
 uploaded_reports = {}
 
-# Input model for asking questions
+# Request model for asking questions
 class QuestionRequest(BaseModel):
     report_id: str
     question: str
@@ -47,7 +58,7 @@ async def ask_question(request: QuestionRequest):
         return JSONResponse(status_code=404, content={"message": "Report not found"})
 
     full_text = uploaded_reports[request.report_id]
-    shortened_text = full_text[:4000]  # Avoid hitting token limit
+    shortened_text = full_text[:4000]  # Trim to avoid token limit
 
     try:
         response = client.chat.completions.create(
@@ -64,13 +75,24 @@ async def ask_question(request: QuestionRequest):
         return {"answer": answer}
 
     except Exception as e:
-        print("OpenAI API Error:", str(e))  # Log error in terminal
+        print("OpenAI API Error:", str(e))
         return JSONResponse(
             status_code=500,
             content={"message": "OpenAI API error", "error": str(e)}
-        )    
+        )
+
+# Mount frontend folder
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
+# Serve frontend pages
 @app.get("/")
 def serve_index():
     return FileResponse(os.path.join("frontend", "index.html"))
+
+@app.get("/login.html")
+def serve_login():
+    return FileResponse(os.path.join("frontend", "login.html"))
+
+@app.get("/dashboard.html")
+def serve_dashboard():
+    return FileResponse(os.path.join("frontend", "dashboard.html"))
