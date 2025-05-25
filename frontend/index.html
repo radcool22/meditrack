@@ -3,47 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Medical Report Assistant</title>
+  <title>Dashboard</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      padding: 2rem;
       background: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      margin: 0;
     }
+
     h1 {
-      margin-bottom: 1rem;
+      margin-bottom: 2rem;
+      text-align: center;
     }
-    label, input, button, textarea {
+
+    form {
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    label {
       display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    input[type="file"],
+    textarea,
+    button {
       width: 100%;
       margin-bottom: 1rem;
       font-size: 1rem;
-    }
-    button {
       padding: 0.6rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    button {
       background-color: #007BFF;
       color: white;
       border: none;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #0056b3;
     }
+
+    #upload-message {
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
     #answer {
-      margin-top: 1rem;
+      max-width: 500px;
+      width: 100%;
       padding: 1rem;
       background-color: #eee;
       border-radius: 6px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h1>Medical Report Assistant</h1>
+  <h1>Dashboard</h1>
 
   <form id="uploadForm">
     <label for="pdfFile">Upload PDF Report:</label>
     <input type="file" id="pdfFile" accept="application/pdf" required />
     <button type="submit">Upload Report</button>
+    <div id="upload-message"></div>
   </form>
 
   <form id="askForm" style="display:none;">
@@ -61,8 +109,16 @@
       e.preventDefault();
       const fileInput = document.getElementById("pdfFile");
       const file = fileInput.files[0];
+      const messageDiv = document.getElementById('upload-message');
 
-      if (!file) return alert("Please select a PDF file.");
+      messageDiv.textContent = '';
+      messageDiv.style.color = '';
+
+      if (!file) {
+        messageDiv.textContent = "Please select a PDF file.";
+        messageDiv.style.color = "red";
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", file);
@@ -78,10 +134,14 @@
         if (!response.ok) throw new Error(result.message || "Upload failed");
 
         currentReportId = result.report_id;
-        alert("Report uploaded successfully!");
+
+        messageDiv.textContent = "Uploaded successfully!";
+        messageDiv.style.color = "green";
+
         document.getElementById("askForm").style.display = "block";
       } catch (error) {
-        alert("Upload failed: " + error.message);
+        messageDiv.textContent = "Upload failed: " + error.message;
+        messageDiv.style.color = "red";
       }
     });
 
@@ -89,7 +149,10 @@
       e.preventDefault();
       const question = document.getElementById("question").value;
 
-      if (!question || !currentReportId) return alert("Missing input or uploaded report.");
+      if (!question || !currentReportId) {
+        alert("Missing input or uploaded report.");
+        return;
+      }
 
       try {
         const response = await fetch("http://localhost:8000/ask/", {

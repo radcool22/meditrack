@@ -8,18 +8,18 @@ import os
 import pdfplumber
 from io import BytesIO
 
+# Initialized the FastAPI app
 app = FastAPI()
 
-# Enable CORS so frontend JS can access the backend
+# Enabled CORS so frontend JS can access the backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Use specific origin like ["http://localhost:8000"] for security
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# OpenAI client setup
 client = OpenAI(api_key="")
 
 # Store uploaded reports in memory
@@ -81,10 +81,10 @@ async def ask_question(request: QuestionRequest):
             content={"message": "OpenAI API error", "error": str(e)}
         )
 
-# Mount frontend folder
+# To mount frontend folder
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-# Serve frontend pages
+# To serve frontend pages
 @app.get("/")
 def serve_index():
     return FileResponse(os.path.join("frontend", "index.html"))
