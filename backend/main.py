@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = OpenAI(os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key="")
 
 # Store uploaded reports in memory
 uploaded_reports = {}
