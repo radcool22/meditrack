@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard</title>
   <style>
     * {
       box-sizing: border-box;
     }
-
     body {
       font-family: Arial, sans-serif;
       background: #f9f9f9;
@@ -20,12 +19,10 @@
       padding: 2rem;
       margin: 0;
     }
-
     h1 {
       margin-bottom: 2rem;
       text-align: center;
     }
-
     form {
       width: 100%;
       max-width: 500px;
@@ -36,13 +33,11 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       margin-bottom: 1.5rem;
     }
-
     label {
       display: block;
       margin-bottom: 0.5rem;
       font-weight: bold;
     }
-
     input[type="file"],
     textarea,
     button {
@@ -53,27 +48,22 @@
       border: 1px solid #ccc;
       border-radius: 4px;
     }
-
     textarea {
       resize: vertical;
     }
-
     button {
       background-color: #007BFF;
       color: white;
       border: none;
       cursor: pointer;
     }
-
     button:hover {
       background-color: #0056b3;
     }
-
     #upload-message {
       font-weight: bold;
       margin-bottom: 1rem;
     }
-
     #answer {
       max-width: 500px;
       width: 100%;
@@ -104,8 +94,10 @@
     <textarea id="question" rows="4" placeholder="Type your question here..." required></textarea>
     <button type="submit">Ask</button>
   </form>
-
   <div id="answer"></div>
+  
+  <button id="summarizeBtn" disabled>Summarize this document</button>
+  <div id="summaryResult" style="margin-top: 1rem;"></div>
 
   <script>
     let currentReportId = null;
@@ -139,14 +131,12 @@
         if (!response.ok) throw new Error(result.message || "Upload failed");
 
         currentReportId = result.report_id;
-
         messageDiv.textContent = "Uploaded successfully!";
         messageDiv.style.color = "green";
 
-        // Show ask form
         document.getElementById("askForm").style.display = "block";
+        document.getElementById("summarizeBtn").disabled = false;
 
-        // Preview the PDF
         const previewUrl = URL.createObjectURL(file);
         document.getElementById("pdf-preview").src = previewUrl;
         document.getElementById("pdf-preview-container").style.display = "block";
@@ -166,6 +156,9 @@
         return;
       }
 
+      const answerDiv = document.getElementById("answer");
+      answerDiv.textContent = "Loading...";
+
       try {
         const response = await fetch("http://localhost:8000/ask/", {
           method: "POST",
@@ -182,9 +175,38 @@
 
         if (!response.ok) throw new Error(result.message || "Request failed");
 
-        document.getElementById("answer").innerText = "Answer: " + result.answer;
+        answerDiv.innerText = "Answer: " + result.answer;
       } catch (error) {
-        alert("Error: " + error.message);
+        answerDiv.innerText = "Error: " + error.message;
+      }
+    });
+
+    document.getElementById("summarizeBtn").addEventListener("click", async () => {
+      const summaryDiv = document.getElementById("summaryResult");
+
+      if (!currentReportId) {
+        summaryDiv.innerText = "Please upload a report first.";
+        return;
+      }
+
+      summaryDiv.innerText = "Summarizing...";
+
+      try {
+        const response = await fetch("http://localhost:8000/summarize/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ report_id: currentReportId }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.message || "Summary failed");
+
+        summaryDiv.innerText = result.summary;
+      } catch (error) {
+        summaryDiv.innerText = "Error: " + error.message;
       }
     });
   </script>

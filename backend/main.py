@@ -8,10 +8,10 @@ import os
 import pdfplumber
 from io import BytesIO
 
-# Initialized the FastAPI app
+# Initialize the FastAPI app
 app = FastAPI()
 
-# Enabled CORS so frontend JS can access the backend
+# Enable CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,15 +22,18 @@ app.add_middleware(
 
 client = OpenAI(api_key="")
 
-# Store uploaded reports in memory
+# In-memory storage for uploaded PDFs
 uploaded_reports = {}
 
-# Request model for asking questions
+# Request models
 class QuestionRequest(BaseModel):
     report_id: str
     question: str
 
-# Upload PDF medical report
+class SummaryRequest(BaseModel):
+    report_id: str
+
+# Upload PDF endpoint
 @app.post("/upload/")
 async def upload_report(file: UploadFile = File(...)):
     report_id = file.filename
@@ -51,14 +54,14 @@ async def upload_report(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": "Failed to read PDF", "error": str(e)})
 
-# Ask a question about the uploaded report
+# Question answering endpoint
 @app.post("/ask/")
 async def ask_question(request: QuestionRequest):
     if request.report_id not in uploaded_reports:
         return JSONResponse(status_code=404, content={"message": "Report not found"})
 
     full_text = uploaded_reports[request.report_id]
-    shortened_text = full_text[:4000]  # Trim to avoid token limit
+    shortened_text = full_text[:4000]
 
     try:
         response = client.chat.completions.create(
@@ -76,15 +79,36 @@ async def ask_question(request: QuestionRequest):
 
     except Exception as e:
         print("OpenAI API Error:", str(e))
-        return JSONResponse(
-            status_code=500,
-            content={"message": "OpenAI API error", "error": str(e)}
-        )
+        return JSONResponse(status_code=500, content={"message": "OpenAI API error", "error": str(e)})
 
-# To mount frontend folder
+# Summary endpoint
+@app.post("/summarize/")
+async def summarize_report(request: SummaryRequest):
+    if request.report_id not in uploaded_reports:
+        return JSONResponse(status_code=404, content={"message": "Report not found"})
+
+    full_text = uploaded_reports[request.report_id]
+    shortened_text = full_text[:4000]
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a medical report summarizer."},
+                {"role": "user", "content": f"Summarize the following medical report:\n\n{shortened_text}"}
+            ],
+            temperature=0.5,
+            max_tokens=300
+        )
+        summary = response.choices[0].message.content.strip()
+        return {"summary": summary}
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": "OpenAI API error", "error": str(e)})
+
+# Static frontend routes
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-# To serve frontend pages
 @app.get("/")
 def serve_index():
     return FileResponse(os.path.join("frontend", "index.html"))
