@@ -8,7 +8,7 @@ import os
 import pdfplumber
 from io import BytesIO
 
-# Initialize the FastAPI app
+# Initialize the FastAPI app   
 app = FastAPI()
 
 # Enable CORS for frontend access
