@@ -74,7 +74,10 @@ async def ask_question(request: QuestionRequest):
             temperature=0.7,
             max_tokens=200
         )
-        answer = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if content is None:
+            return JSONResponse(status_code=500, content={"message": "OpenAI API returned no answer."})
+        answer = content.strip()
         return {"answer": answer}
 
     except Exception as e:
@@ -100,7 +103,10 @@ async def summarize_report(request: SummaryRequest):
             temperature=0.5,
             max_tokens=300
         )
-        summary = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if content is None:
+            return JSONResponse(status_code=500, content={"message": "OpenAI API returned no summary."})
+        summary = content.strip()
         return {"summary": summary}
 
     except Exception as e:
