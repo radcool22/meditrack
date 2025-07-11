@@ -75,48 +75,18 @@ else:
 
 st.title(title)
 
-# Add LandingAI API key input (sidebar or top)
-landingai_api_key = st.sidebar.text_input("LandingAI API Key", type="password", value=os.environ.get("LANDINGAI_API_KEY", ""))
-
-# Upload medical report
-uploaded_file = st.file_uploader(upload_label, type=["pdf", "txt"])
-
-# Function to extract text using LandingAI Agentic Document Extraction API
-def extract_with_landingai(file, api_key):
-    url = "https://api.va.landing.ai/v1/tools/agentic-document-analysis"
-    headers = {"Authorization": f"Basic {api_key}"}
-    files = {"pdf": (file.name, file, file.type)}
-    data = {
-        "include_marginalia": "true",
-        "include_metadata_in_markdown": "true"
-    }
-    try:
-        response = requests.post(url, headers=headers, files=files, data=data)
-        response.raise_for_status()
-        result = response.json()
-        markdown = result.get("data", {}).get("markdown", "")
-        return markdown
-    except Exception as e:
-        st.error(f"LandingAI extraction failed: {e}")
-        return ""
+# Allow multiple file uploads (PDF, TXT)
+uploaded_files = st.file_uploader(upload_label, type=["pdf", "txt"], accept_multiple_files=True)
 
 report_text = ""
-if uploaded_file:
-    if uploaded_file.type == "application/pdf" and landingai_api_key:
-        # Use LandingAI for PDF extraction
-        report_text = extract_with_landingai(uploaded_file, landingai_api_key)
-        if not report_text.strip():
-            st.warning("LandingAI did not return any text. Falling back to local extraction.")
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        if uploaded_file.type == "application/pdf":
             with pdfplumber.open(uploaded_file) as pdf:
                 for page in pdf.pages:
                     report_text += page.extract_text() or ""
-    elif uploaded_file.type == "application/pdf":
-        # Fallback to local extraction if no API key
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages:
-                report_text += page.extract_text() or ""
-    else:
-        report_text = uploaded_file.read().decode("utf-8")
+        else:
+            report_text += uploaded_file.read().decode("utf-8")
 
     if not report_text.strip():
         st.error(extract_error)
@@ -155,7 +125,7 @@ if uploaded_file:
             prompt = user_prompt.format(user_input=user_input)
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+                messages=[{"role": "system", "content": system_prompt + report_text[:4000]}, {"role": "user", "content": prompt}]
             )
             content = response.choices[0].message.content
             if content is None:

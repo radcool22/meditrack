@@ -1,6 +1,7 @@
 from mistralai import Mistral
+import os
 
-api_key = ""
+api_key = os.environ.get("MISTRAL_API_KEY")
 client = Mistral(api_key=api_key)
 
 ocr_response = client.ocr.process(
