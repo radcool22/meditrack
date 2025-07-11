@@ -2,16 +2,25 @@ import streamlit as st
 import pdfplumber
 from openai import OpenAI
 import os
+import dotenv
+import requests
 
 # Set your OpenAI API key here or as an environment variable
-# OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "YOUR_OPENAI_KEY")
-OPENAI_API_KEY = ""
+dotenv.load_dotenv()
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable not set.")
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Load system prompt from prompt.txt
+prompt_file_path = os.path.join(os.path.dirname(__file__), "prompt.txt")
+with open(prompt_file_path, "r", encoding="utf-8") as f:
+    system_prompt = f.read()
 
 # Language selection
 if "language" not in st.session_state:
-    st.session_state.language = "Hindi"
-language = st.selectbox("Choose Language / भाषा चुनें", ["Hindi", "English"], index=0)
+    st.session_state.language = "English"
+language = st.selectbox("Choose Language / भाषा चुनें", ["English", "Hindi"], index=0)
 st.session_state.language = language
 
 # Reset answer and show_answer when language or report changes
@@ -26,7 +35,7 @@ if "last_report_text" not in st.session_state:
 
 # Interface text based on language
 if language == "Hindi":
-    title = "मेडिकल रिपोर्ट हिंदी चैटबोट 🤖"
+    title = "मेडीट्रैक"
     upload_label = "अपनी मेडिकल रिपोर्ट (PDF या TXT) अपलोड करें"
     summary_button = "रिपोर्ट का हिंदी में सारांश प्राप्त करें"
     summary_spinner = "सारांश तैयार किया जा रहा है..."
@@ -42,11 +51,10 @@ if language == "Hindi":
     agent_label = "**एजेंट:**"
     upload_info = "कृपया पहले अपनी मेडिकल रिपोर्ट अपलोड करें।"
     extract_error = "रिपोर्ट से कोई टेक्स्ट नहीं निकला। कृपया सही फाइल अपलोड करें।"
-    system_prompt = "You are a helpful medical assistant who always answers only in Hindi. The user will ask questions in Hindi about the following English medical report:\n\n"
     summary_prompt = "नीचे एक अंग्रे़ी मेडिकल रिपोर्ट है। कृपया इसका संक्षिप्त सारांश केवल हिंदी में दें (अंग्रेज़ी का एक भी शब्द न हो):\n\n{report_text}"
     user_prompt = "{user_input} (उत्तर केवल हिंदी में दें, अंग्रेज़ी का एक भी शब्द न हो)"
 else:
-    title = "Medical Report English Chatbot 🤖"
+    title = "MediTrack"
     upload_label = "Upload your medical report (PDF or TXT)"
     summary_button = "Get summary in English"
     summary_spinner = "Generating summary..."
@@ -59,23 +67,52 @@ else:
     chat_button = "Send"
     chat_spinner = "Generating answer..."
     chat_error = "OpenAI API did not return an answer."
-    agent_label = "**Agent:**"
+    agent_label = "**Agent::**"
     upload_info = "Please upload your medical report first."
     extract_error = "No text could be extracted from the report. Please upload a valid file."
-    system_prompt = "You are a helpful medical assistant who always answers only in English. The user will ask questions in English about the following English medical report:\n\n"
     summary_prompt = "Below is an English medical report. Please provide a concise summary in English:\n\n{report_text}"
     user_prompt = "{user_input} (Answer only in English)"
 
 st.title(title)
 
+# Add LandingAI API key input (sidebar or top)
+landingai_api_key = st.sidebar.text_input("LandingAI API Key", type="password", value=os.environ.get("LANDINGAI_API_KEY", ""))
+
 # Upload medical report
 uploaded_file = st.file_uploader(upload_label, type=["pdf", "txt"])
 
+# Function to extract text using LandingAI Agentic Document Extraction API
+def extract_with_landingai(file, api_key):
+    url = "https://api.va.landing.ai/v1/tools/agentic-document-analysis"
+    headers = {"Authorization": f"Basic {api_key}"}
+    files = {"pdf": (file.name, file, file.type)}
+    data = {
+        "include_marginalia": "true",
+        "include_metadata_in_markdown": "true"
+    }
+    try:
+        response = requests.post(url, headers=headers, files=files, data=data)
+        response.raise_for_status()
+        result = response.json()
+        markdown = result.get("data", {}).get("markdown", "")
+        return markdown
+    except Exception as e:
+        st.error(f"LandingAI extraction failed: {e}")
+        return ""
+
 report_text = ""
 if uploaded_file:
-    if uploaded_file.type == "application/pdf":
+    if uploaded_file.type == "application/pdf" and landingai_api_key:
+        # Use LandingAI for PDF extraction
+        report_text = extract_with_landingai(uploaded_file, landingai_api_key)
+        if not report_text.strip():
+            st.warning("LandingAI did not return any text. Falling back to local extraction.")
+            with pdfplumber.open(uploaded_file) as pdf:
+                for page in pdf.pages:
+                    report_text += page.extract_text() or ""
+    elif uploaded_file.type == "application/pdf":
+        # Fallback to local extraction if no API key
         with pdfplumber.open(uploaded_file) as pdf:
-            report_text = ""
             for page in pdf.pages:
                 report_text += page.extract_text() or ""
     else:
@@ -99,12 +136,7 @@ if uploaded_file:
             prompt = summary_prompt.format(report_text=report_text[:4000])
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5,
-                max_tokens=300
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
             )
             content = response.choices[0].message.content
             if content is None:
@@ -123,12 +155,7 @@ if uploaded_file:
             prompt = user_prompt.format(user_input=user_input)
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt + report_text[:4000]},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=200
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
             )
             content = response.choices[0].message.content
             if content is None:
