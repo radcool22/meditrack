@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediTrack - Understand Your Medical Reports</title>
+  <meta name="description"
+    content="Securely upload, store, and understand your medical reports with AI-powered explanations">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <!-- Landing Page -->
+  <div id="landing-page" class="page active">
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>🏥 MediTrack</h1>
+        </div>
+        <button id="nav-login-btn" class="btn btn-primary">Sign In</button>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <h2 class="hero-title">Understand Your Medical Reports</h2>
+          <p class="hero-subtitle">Securely upload, store, and get AI-powered explanations of your medical reports in
+            simple, easy-to-understand language.</p>
+          <button id="hero-cta-btn" class="btn btn-large btn-primary">Get Started</button>
+        </div>
+        <div class="hero-image">
+          <div class="feature-card">
+            <div class="feature-icon">📄</div>
+            <h3>Upload Reports</h3>
+            <p>Securely store your lab results, imaging reports, and prescriptions</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🤖</div>
+            <h3>AI Explanations</h3>
+            <p>Get clear, non-diagnostic explanations of your medical reports</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💬</div>
+            <h3>Ask Questions</h3>
+            <p>Chat with AI to understand specific terms and values</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="container">
+        <h2 class="section-title">Why MediTrack?</h2>
+        <div class="features-grid">
+          <div class="feature-item">
+            <div class="feature-icon-large">🔒</div>
+            <h3>Secure & Private</h3>
+            <p>Your medical data is encrypted and only accessible by you</p>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon-large">📊</div>
+            <h3>Organized Dashboard</h3>
+            <p>All your reports in one place, searchable and filterable</p>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon-large">🎯</div>
+            <h3>Easy to Understand</h3>
+            <p>Complex medical jargon translated into simple language</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Login Page -->
+  <div id="login-page" class="page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <h2>Welcome to MediTrack</h2>
+        <p class="auth-subtitle">Sign in with your phone number to access your medical reports</p>
+
+        <div id="email-form" class="auth-form">
+          <div class="form-group">
+            <label for="email-input">Phone Number</label>
+            <input type="tel" id="email-input" placeholder="+1234567890" required>
+          </div>
+          <button id="send-otp-btn" class="btn btn-primary btn-block">Send Verification Code</button>
+          <div id="email-error" class="error-message"></div>
+        </div>
+
+        <div id="otp-form" class="auth-form hidden">
+          <p class="otp-message">We've sent a 6-digit code to <strong id="otp-email"></strong></p>
+          <div class="form-group">
+            <label for="otp-input">Verification Code</label>
+            <input type="text" id="otp-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required>
+          </div>
+          <button id="verify-otp-btn" class="btn btn-primary btn-block">Verify & Sign In</button>
+          <button id="resend-otp-btn" class="btn btn-secondary btn-block">Resend Code</button>
+          <div id="otp-error" class="error-message"></div>
+        </div>
+
+        <div class="loading-spinner hidden" id="auth-loading">
+          <div class="spinner"></div>
+          <p>Processing...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Page -->
+  <div id="dashboard-page" class="page">
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>🏥 MediTrack</h1>
+        </div>
+        <div class="nav-actions">
+          <span id="user-email" class="user-email"></span>
+          <button id="logout-btn" class="btn btn-secondary">Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="dashboard-container">
+      <div class="dashboard-header">
+        <h2>My Medical Reports</h2>
+        <button id="upload-report-btn" class="btn btn-primary">
+          <span>📤</span> Upload Report
+        </button>
+      </div>
+
+      <div class="dashboard-controls">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="Search reports...">
+        </div>
+        <div class="filter-group">
+          <select id="category-filter">
+            <option value="">All Categories</option>
+          </select>
+          <select id="sort-select">
+            <option value="created_at-DESC">Newest First</option>
+            <option value="created_at-ASC">Oldest First</option>
+            <option value="title-ASC">Title A-Z</option>
+            <option value="title-DESC">Title Z-A</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="reports-grid" class="reports-grid">
+        <!-- Reports will be loaded here -->
+      </div>
+
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon">📋</div>
+        <h3>No reports yet</h3>
+        <p>Upload your first medical report to get started</p>
+        <button class="btn btn-primary" onclick="document.getElementById('upload-report-btn').click()">Upload
+          Report</button>
+      </div>
+
+      <div class="loading-spinner hidden" id="dashboard-loading">
+        <div class="spinner"></div>
+        <p>Loading reports...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Detail Page -->
+  <div id="report-detail-page" class="page">
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <button id="back-to-dashboard-btn" class="btn btn-secondary">← Back</button>
+          <h1>🏥 MediTrack</h1>
+        </div>
+        <div class="nav-actions">
+          <button id="delete-report-btn" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="report-detail-container">
+      <div class="report-viewer">
+        <div class="report-header">
+          <h2 id="report-title"></h2>
+          <div class="report-metadata">
+            <span id="report-category" class="badge"></span>
+            <span id="report-date"></span>
+            <span id="report-source"></span>
+          </div>
+        </div>
+
+        <div class="document-viewer">
+          <iframe id="pdf-viewer" style="width: 100%; height: 600px; border: none;"></iframe>
+        </div>
+
+        <div class="ai-section">
+          <button id="get-explanation-btn" class="btn btn-primary btn-large">
+            <span>🤖</span> Get AI Explanation
+          </button>
+
+          <div id="explanation-container" class="explanation-container hidden">
+            <h3>AI Explanation</h3>
+            <div id="explanation-content" class="explanation-content"></div>
+          </div>
+
+          <div id="chat-container" class="chat-container hidden">
+            <h3>Ask Follow-up Questions</h3>
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-group">
+              <input type="text" id="chat-input" placeholder="Ask a question about this report...">
+              <button id="send-chat-btn" class="btn btn-primary">Send</button>
+            </div>
+          </div>
+
+          <div class="loading-spinner hidden" id="ai-loading">
+            <div class="spinner"></div>
+            <p>Generating explanation...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div id="upload-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Medical Report</h3>
+        <button class="modal-close" id="close-upload-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="upload-form">
+          <div class="form-group">
+            <label for="file-input">Select File (PDF or Image)</label>
+            <input type="file" id="file-input" accept=".pdf,image/*" required>
+            <small>Maximum file size: 10MB</small>
+          </div>
+
+          <div class="form-group">
+            <label for="title-input">Report Title *</label>
+            <input type="text" id="title-input" placeholder="e.g., Blood Test Results" required>
+          </div>
+
+          <div class="form-group">
+            <label for="category-input">Category</label>
+            <select id="category-input">
+              <option value="">Select category</option>
+              <option value="Lab Results">Lab Results</option>
+              <option value="Imaging">Imaging</option>
+              <option value="Prescription">Prescription</option>
+              <option value="Discharge Summary">Discharge Summary</option>
+              <option value="Consultation">Consultation</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="date-input">Report Date</label>
+            <input type="date" id="date-input">
+          </div>
+
+          <div class="form-group">
+            <label for="source-input">Source/Hospital</label>
+            <input type="text" id="source-input" placeholder="e.g., City Hospital">
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="cancel-upload-btn">Cancel</button>
+            <button type="submit" class="btn btn-primary">Upload</button>
+          </div>
+
+          <div id="upload-error" class="error-message"></div>
+          <div class="loading-spinner hidden" id="upload-loading">
+            <div class="spinner"></div>
+            <p>Uploading...</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/report-detail.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
